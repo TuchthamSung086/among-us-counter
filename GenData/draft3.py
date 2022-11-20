@@ -208,10 +208,10 @@ def gen2(fg, bg, it):
 
 
 # Import Images
-canteen = Image.open("bg/canteen.jpg")
-red = Image.open("crewmate/red.png")
+canteen = Image.open("GenData/bg/canteen.jpg")
+red = Image.open("GenData/crewmate/red.png")
 
-img1, label1, cnt = gen2(red, canteen, 100)
+img1, label1, cnt = gen2(red, canteen, 10)
 img1.show()
 label1.show()
 print(cnt)
