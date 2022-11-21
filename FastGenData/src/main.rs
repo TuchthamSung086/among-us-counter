@@ -59,6 +59,13 @@ where
     imageops::overlay(bg, &fg, loc_x, loc_y);
 }
 
+fn convert_transparent(img: &RgbaImage, num: u8) -> GrayAlphaImage {
+    imageproc::map::map_colors(img, |rgba| {
+        let alpha = rgba[3];
+        LumaA([num, alpha])
+    })
+}
+
 fn random_paste(rng: &mut impl rand::Rng) -> PasteParams {
     PasteParams {
         sz: rng.gen_range(1.0..=2.0),
@@ -127,21 +134,17 @@ fn is_in_boundary(fg: &GrayAlphaImage, bg: &GrayAlphaImage, params: &PasteParams
 fn gen(fg: &RgbaImage, bg: RgbaImage, it: usize) -> (RgbaImage, GrayImage, usize) {
     let (width, height) = bg.dimensions();
     let mut label = GrayAlphaImage::new(width, height);
+    let scale = 255;
+    let minus = scale / it;
     let mut img = bg;
     let mut cnt = 0;
-    let mut overlap_cnt = 0;
-    let mut boundary_cnt = 0;
 
     let rng = &mut rand::thread_rng();
 
     for i in 0..it {
         let paste_params = random_paste(rng);
-        let figure_img = imageproc::map::map_colors(fg, |rgba| {
-            let alpha = rgba[3];
-            LumaA([255 - (255 / it * i) as u8, alpha])
-        });
+        let figure_img = convert_transparent(fg, (scale - minus * i) as u8);
         if !is_in_boundary(&figure_img, &label, &paste_params) {
-            boundary_cnt += 1;
             continue;
         }
 
@@ -149,7 +152,6 @@ fn gen(fg: &RgbaImage, bg: RgbaImage, it: usize) -> (RgbaImage, GrayImage, usize
         paste_on(&figure_img, &mut label_new, &paste_params);
 
         if is_img_overlap(&label, &label_new) {
-            overlap_cnt += 1;
             continue;
         }
 
