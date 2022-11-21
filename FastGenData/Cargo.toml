@@ -10,7 +10,7 @@ clap = { version = "4.0.26", features=["derive"]}
 color-eyre = "0.6.2"
 image = "0.24.5"
 imageproc = "0.23.0"
-indicatif = { version = "0.17.2", features = ["rayon"] }
+indicatif = { version = "0.16.2", features = ["rayon"] }
 itertools = "0.10.5"
 rand = "0.8.5"
 rayon = "1.6.0"

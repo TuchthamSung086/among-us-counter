@@ -15,7 +15,7 @@ use imageproc::{
     definitions::Image,
     geometric_transformations::{self, Interpolation},
 };
-use indicatif::ParallelProgressIterator;
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
@@ -187,6 +187,9 @@ struct Args {
     /// Output folder
     #[arg(short, long, default_value = "./results")]
     output_dir: PathBuf,
+    /// Run but don't output any file, for testing and benchmarking
+    #[arg(long)]
+    dry_run: bool,
 }
 
 fn main() -> Result<()> {
@@ -202,7 +205,9 @@ fn main() -> Result<()> {
     let red: RgbaImage = image::open("./crewmate/red.png")?.into_rgba8();
 
     // Create output folder, if not exist
-    fs::create_dir_all(&output_dir)?;
+    if !args.dry_run {
+        fs::create_dir_all(&output_dir)?;
+    }
 
     // Begin the processing
     let start = Instant::now();
@@ -212,15 +217,23 @@ fn main() -> Result<()> {
         let count_storage = Mutex::new(Vec::with_capacity(n));
 
         // Run processing task in parallel
+
         (0..n)
             .into_par_iter()
-            .progress_count(n as u64)
+            .progress_with(
+                ProgressBar::new(n as u64).with_style(
+                    ProgressStyle::default_bar().template(
+                        "{wide_bar} {pos}/{len} ({percent}%) | fps={per_sec} | {eta} ETA",
+                    ),
+                ),
+            )
             .try_for_each(|i| {
                 let (img, label, cnt): (RgbaImage, GrayImage, usize) =
                     gen(&red, canteen.clone(), it);
-                // println!("i={i}, count={cnt}");
-                img.save(output_dir.join(format!("img-{i}.png")))?;
-                label.save(output_dir.join(format!("label-{i}.png")))?;
+                if !args.dry_run {
+                    img.save(output_dir.join(format!("img-{i}.png")))?;
+                    label.save(output_dir.join(format!("label-{i}.png")))?;
+                }
                 count_storage.lock().unwrap().push((i, cnt));
 
                 Result::<(), color_eyre::Report>::Ok(())
@@ -236,7 +249,11 @@ fn main() -> Result<()> {
         for (i, cnt) in count_storage {
             writeln!(contents, "{i},{cnt}")?;
         }
-        fs::write(output_dir.join("count.csv"), contents)?;
+        if !args.dry_run {
+            fs::write(output_dir.join("count.csv"), contents)?;
+        } else {
+            println!("(id, count)[]:\n{}", contents);
+        }
     }
     let end = Instant::now();
     let duration = end - start;
