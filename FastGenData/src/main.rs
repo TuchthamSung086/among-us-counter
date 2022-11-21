@@ -1,15 +1,8 @@
 #![deny(unused_must_use)]
 
-use std::{
-    env::args,
-    fmt::Write,
-    fs,
-    path::{Path, PathBuf},
-    sync::Mutex,
-    time::Instant,
-};
+use std::{fmt::Write, fs, path::PathBuf, sync::Mutex, time::Instant};
 
-use color_eyre::eyre::{Context, ContextCompat, Result};
+use color_eyre::eyre::Result;
 use image::{imageops, DynamicImage, GrayAlphaImage, GrayImage, LumaA, Pixel, RgbaImage};
 use imageproc::{
     definitions::Image,
