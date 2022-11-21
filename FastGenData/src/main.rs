@@ -1,6 +1,13 @@
 #![deny(unused_must_use)]
 
-use std::{env::args, fmt::Write, fs, sync::Mutex, time::Instant};
+use std::{
+    env::args,
+    fmt::Write,
+    fs,
+    path::{Path, PathBuf},
+    sync::Mutex,
+    time::Instant,
+};
 
 use color_eyre::eyre::{Context, ContextCompat, Result};
 use image::{imageops, DynamicImage, GrayAlphaImage, GrayImage, LumaA, Pixel, RgbaImage};
@@ -167,23 +174,35 @@ fn gen(fg: &RgbaImage, bg: RgbaImage, it: usize) -> (RgbaImage, GrayImage, usize
     (img, label, cnt)
 }
 
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about)]
+struct Args {
+    /// Amount of image to generate
+    n: usize,
+    /// Number of pasting attempt per image
+    #[arg(long, default_value_t = 10)]
+    it: usize,
+    /// Output folder
+    #[arg(short, long, default_value = "./results")]
+    output_dir: PathBuf,
+}
+
 fn main() -> Result<()> {
     color_eyre::install()?;
+
+    let args = Args::parse();
+    let n = args.n;
+    let it = args.it;
+    let output_dir = args.output_dir;
 
     // Read input images
     let canteen: RgbaImage = image::open("./bg/canteen.jpg")?.into_rgba8();
     let red: RgbaImage = image::open("./crewmate/red.png")?.into_rgba8();
 
-    // Number of generated image, recived from command line argument
-    let n = args()
-        .skip(1)
-        .next()
-        .context("n is missing (args[1] is missing)")
-        .and_then(|s| s.parse().context("n cannot be convert to usize"))
-        .context("Fail parsing {n}, (usage: cargo run --release <n>)")?;
-
     // Create output folder, if not exist
-    fs::create_dir_all("results")?;
+    fs::create_dir_all(&output_dir)?;
 
     // Begin the processing
     let start = Instant::now();
@@ -198,10 +217,10 @@ fn main() -> Result<()> {
             .progress_count(n as u64)
             .try_for_each(|i| {
                 let (img, label, cnt): (RgbaImage, GrayImage, usize) =
-                    gen(&red, canteen.clone(), 10);
+                    gen(&red, canteen.clone(), it);
                 // println!("i={i}, count={cnt}");
-                img.save(format!("results/img-{i}.png"))?;
-                label.save(format!("results/label-{i}.png"))?;
+                img.save(output_dir.join(format!("img-{i}.png")))?;
+                label.save(output_dir.join(format!("label-{i}.png")))?;
                 count_storage.lock().unwrap().push((i, cnt));
 
                 Result::<(), color_eyre::Report>::Ok(())
@@ -217,7 +236,7 @@ fn main() -> Result<()> {
         for (i, cnt) in count_storage {
             writeln!(contents, "{i},{cnt}")?;
         }
-        fs::write("results/count.txt", contents)?;
+        fs::write(output_dir.join("count.csv"), contents)?;
     }
     let end = Instant::now();
     let duration = end - start;
