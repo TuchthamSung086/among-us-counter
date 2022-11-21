@@ -1,8 +1,8 @@
 #![deny(unused_must_use)]
 
-use std::{fs::OpenOptions, io::Write, sync::Mutex, time::Instant};
+use std::{env::args, fmt::Write, fs, sync::Mutex, time::Instant};
 
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{Context, ContextCompat, Result};
 use image::{imageops, DynamicImage, GrayAlphaImage, GrayImage, LumaA, Pixel, RgbaImage};
 use imageproc::{
     definitions::Image,
@@ -49,7 +49,7 @@ where
     fg = geometric_transformations::rotate_about_center(
         &fg,
         params.rot,
-        Interpolation::Bicubic,
+        Interpolation::Nearest,
         zeroed,
     );
 
@@ -168,17 +168,29 @@ fn gen(fg: &RgbaImage, bg: RgbaImage, it: usize) -> (RgbaImage, GrayImage, usize
 fn main() -> Result<()> {
     color_eyre::install()?;
 
+    // Read input images
     let canteen: RgbaImage = image::open("./bg/canteen.jpg")?.into_rgba8();
     let red: RgbaImage = image::open("./crewmate/red.png")?.into_rgba8();
 
-    // Number of generated image
-    let n = 1000;
+    // Number of generated image, recived from command line argument
+    let n = args()
+        .skip(1)
+        .next()
+        .context("n is missing (args[1] is missing)")
+        .and_then(|s| s.parse().context("n cannot be convert to usize"))
+        .context("Fail parsing {n}, (usage: cargo run --release <n>)")?;
 
+    // Create output folder, if not exist
+    fs::create_dir_all("results")?;
+
+    // Begin the processing
     let start = Instant::now();
     {
+        // Vector to store the count in each image
+        // Each element is (image_id, count)
         let count_storage = Mutex::new(Vec::with_capacity(n));
 
-        // Run in parallel
+        // Run processing task in parallel
         (0..n)
             .into_par_iter()
             .progress_count(n as u64)
@@ -193,17 +205,17 @@ fn main() -> Result<()> {
                 Result::<(), color_eyre::Report>::Ok(())
             })?;
 
+        // Sort the count vector by image id
+        // This is "need" because task are run in parallel, so image id's ordering is not necessary ascending.
         let mut count_storage = count_storage.into_inner()?;
         count_storage.sort_unstable();
 
-        let mut count_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open("results/count.txt")?;
+        // Write data from count vector to file
+        let mut contents = String::new();
         for (i, cnt) in count_storage {
-            writeln!(count_file, "{i},{cnt}")?;
+            writeln!(contents, "{i},{cnt}")?;
         }
+        fs::write("results/count.txt", contents)?;
     }
     let end = Instant::now();
     let duration = end - start;
