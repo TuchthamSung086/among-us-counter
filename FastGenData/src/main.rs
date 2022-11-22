@@ -225,8 +225,8 @@ fn main() -> Result<()> {
                 let (img, label, cnt): (RgbaImage, GrayImage, usize) =
                     gen(&red, canteen.clone(), it);
                 if !args.dry_run {
-                    img.save(output_dir.join(format!("img-{i}.png")))?;
-                    label.save(output_dir.join(format!("label-{i}.png")))?;
+                    img.save(output_dir.join(format!("img{i}.png")))?;
+                    label.save(output_dir.join(format!("label{i}.png")))?;
                 }
                 count_storage.lock().unwrap().push((i, cnt));
 
