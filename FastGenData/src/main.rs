@@ -42,7 +42,7 @@ where
         &fg,
         (base_width * params.sz) as u32,
         ((base_width * params.sz / fw as f32) * fh as f32) as u32,
-        imageops::FilterType::CatmullRom,
+        imageops::FilterType::Nearest,
     );
 
     let zeroed = *I::from_slice((vec![0u8; I::CHANNEL_COUNT as usize]).as_slice());
@@ -62,7 +62,8 @@ where
 fn convert_transparent(img: &RgbaImage, num: u8) -> GrayAlphaImage {
     imageproc::map::map_colors(img, |rgba| {
         let alpha = rgba[3];
-        LumaA([num, alpha])
+        let new_alpha = if alpha > 127 { 255 } else { 0 };
+        LumaA([num, new_alpha])
     })
 }
 
