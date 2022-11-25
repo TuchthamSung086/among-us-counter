@@ -229,14 +229,16 @@ fn main() -> Result<()> {
                 ),
             )
             .try_for_each(|i| {
-                let (img, label, cnt): (RgbaImage, GrayImage, usize) =
-                    gen(&red, canteen.clone(), it);
+                let (img, label, cnt): (RgbaImage, GrayImage, usize) = loop {
+                    let (img, label, cnt): (RgbaImage, GrayImage, usize) =
+                        gen(&red, canteen.clone(), it);
 
-                if let Err(err) = sanity_check(&img, &label, cnt) {
-                    img.save("err_img.png")?;
-                    label.save("err_label.png")?;
-                    return Err(err);
-                }
+                    if let Err(err) = sanity_check(&img, &label, cnt) {
+                        eprintln!("{}\nRegenerating...", err);
+                    } else {
+                        break (img, label, cnt);
+                    }
+                };
 
                 if !args.dry_run {
                     img.save(output_dir.join(format!("img{i}.png")))?;
