@@ -1,8 +1,15 @@
 #![deny(unused_must_use)]
 
-use std::{fmt::Write, fs, path::PathBuf, sync::Mutex, time::Instant};
+use std::{
+    collections::{BTreeSet, HashSet},
+    fmt::Write,
+    fs,
+    path::PathBuf,
+    sync::Mutex,
+    time::Instant,
+};
 
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{ensure, Result};
 use image::{imageops, DynamicImage, GrayAlphaImage, GrayImage, LumaA, Pixel, RgbaImage};
 use imageproc::{
     definitions::Image,
@@ -224,6 +231,13 @@ fn main() -> Result<()> {
             .try_for_each(|i| {
                 let (img, label, cnt): (RgbaImage, GrayImage, usize) =
                     gen(&red, canteen.clone(), it);
+
+                if let Err(err) = sanity_check(&img, &label, cnt) {
+                    img.save("err_img.png")?;
+                    label.save("err_label.png")?;
+                    return Err(err);
+                }
+
                 if !args.dry_run {
                     img.save(output_dir.join(format!("img{i}.png")))?;
                     label.save(output_dir.join(format!("label{i}.png")))?;
@@ -255,6 +269,30 @@ fn main() -> Result<()> {
     println!("take {:?} for {} image", duration, n);
     println!("average cycle time = {:?}", duration / n as _);
     println!("throughput = {} item/s", n as f64 / duration.as_secs_f64());
+
+    Ok(())
+}
+
+fn sanity_check(_img: &RgbaImage, label: &GrayImage, cnt: usize) -> Result<()> {
+    let level_counts = label.pixels().map(|px| px[0]).counts();
+    ensure!(
+        level_counts.len() - 1 == cnt,
+        "actual #level in image is  {} but the object count is {}",
+        level_counts.len(),
+        cnt
+    );
+
+    for (level, area) in level_counts {
+        if level == 0 {
+            continue;
+        }
+        ensure!(
+            area > 100,
+            "Area {} of level {} should be more than 100",
+            area,
+            level
+        );
+    }
 
     Ok(())
 }
