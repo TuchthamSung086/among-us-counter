@@ -21,12 +21,12 @@ def visualize(imgs, results, threshold=None, colors=(0, 255, 0)):
         #   res = filter_by_score(res, threshold)
 
         if 'scores' in res:
-            colors = [(colors[0]*l, colors[1]*l, colors[2]*l)
+            _colors = [(colors[0]*l, colors[1]*l, colors[2]*l)
                       for l in res['scores']]
             labels = [f"{int(i)}:{np.round(float(s), 2)}" for i,
                       s in zip(res['labels'], res['scores'])]
         else:
-            colors = colors
+            _colors = colors
             # colors = [(colors[0], colors[1], colors[2]) for _ in res['labels']]
             # print(colors)
             labels = [str(int(i)) for i in res['labels']]
@@ -35,7 +35,7 @@ def visualize(imgs, results, threshold=None, colors=(0, 255, 0)):
             (255*img).to(torch.uint8),
             res['boxes'],
             labels=labels,
-            colors=colors
+            colors=_colors
         )
 
         previews.append(preview)
