@@ -94,8 +94,12 @@ class AmougDataset(tv.datasets.VisionDataset):
 
 
 class AmougRCNNModel(pl.LightningModule):
-    def __init__(self, config={'lr': 0.00005, 'weight_decay': 0.005}):
+    def __init__(self, config={'lr': 0.00005, 'weight_decay': 0.005}, augmentation: Optional[torch.nn.Module] = None, augment_non_train=False):
         super().__init__()
+
+        # Constructor stuff
+        self.augmentation = augmentation
+        self.augment_non_train = augment_non_train
 
         # Load the base model
         model = detection.fasterrcnn_resnet50_fpn_v2(
@@ -122,10 +126,17 @@ class AmougRCNNModel(pl.LightningModule):
         # Save hyperparameter in checkpoints
         self.lr = config['lr']
         self.weight_decay = config['weight_decay']
-        self.save_hyperparameters()
+        self.save_hyperparameters("config")
 
     def forward(self, x):
         return self.model(x)
+
+    def on_after_batch_transfer(self, batch, dataloader_idx):
+        imgs, targets = batch
+        if self.augmentation is not None and (self.trainer.training or self.augment_non_train):
+            # Perform data augmentation
+            imgs = self.augmentation(imgs)
+        return imgs, targets
 
     def training_step(self, batch, batch_idx):
         imgs, targets = batch
