@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torchvision as tv
 from torchvision.models import detection
-from torchvision.transforms.functional import pil_to_tensor
+from torchvision.transforms.functional import pil_to_tensor, convert_image_dtype
 from torchmetrics.detection import MeanAveragePrecision
 
 from typing import Optional, Callable
@@ -64,9 +64,8 @@ class AmougDataset(tv.datasets.VisionDataset):
         img_path = os.path.join(self.root, f"img{index}.png")
         mask_path = os.path.join(self.root, f"label{index}.png")
 
-        img = PIL.Image.open(img_path).convert("RGB")
-        mask = PIL.Image.open(mask_path)
-        mask = pil_to_tensor(mask)
+        img = tv.io.read_image(img_path, tv.io.ImageReadMode.RGB)
+        mask = tv.io.read_image(mask_path, tv.io.ImageReadMode.GRAY)
 
         # Split color encoded image into binary masks
         obj_ids = torch.unique(mask)[1:]
@@ -132,11 +131,20 @@ class AmougRCNNModel(pl.LightningModule):
         return self.model(x)
 
     def on_after_batch_transfer(self, batch, dataloader_idx):
-        imgs, targets = batch
-        if self.augmentation is not None and (self.trainer.training or self.augment_non_train):
-            # Perform data augmentation
-            imgs = self.augmentation(imgs)
-        return imgs, targets
+        should_augment = self.augmentation is not None and (
+            self.trainer.training or self.augment_non_train
+        )
+
+        if type(batch) == tuple:
+            imgs, targets = batch
+            if should_augment:
+                imgs = self.augmentation(imgs)
+            return imgs, targets
+        else:
+            imgs = batch
+            if should_augment:
+                imgs = self.augmentation(imgs)
+            return imgs
 
     def training_step(self, batch, batch_idx):
         imgs, targets = batch
