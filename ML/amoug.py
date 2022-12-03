@@ -177,4 +177,8 @@ class AmougRCNNModel(pl.LightningModule):
             self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, verbose=True, patience=3, factor=0.75)
-        return [optimizer], [lr_scheduler]
+        return {
+           'optimizer': optimizer,
+           'lr_scheduler': lr_scheduler,
+           'monitor': 'val_loss'
+       }
