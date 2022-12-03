@@ -22,7 +22,7 @@ def visualize(imgs, results, threshold=None, colors=(0, 255, 0)):
 
         if 'scores' in res:
             _colors = [(colors[0]*l, colors[1]*l, colors[2]*l)
-                      for l in res['scores']]
+                       for l in res['scores']]
             labels = [f"{int(i)}:{np.round(float(s), 2)}" for i,
                       s in zip(res['labels'], res['scores'])]
         else:
@@ -94,7 +94,7 @@ class AmougDataset(tv.datasets.VisionDataset):
 
 
 class AmougRCNNModel(pl.LightningModule):
-    def __init__(self, lr=0.005, momentum=0.9, weight_decay=0.0005):
+    def __init__(self, config={'lr': 0.00005, 'weight_decay': 0.005}):
         super().__init__()
 
         # Load the base model
@@ -120,9 +120,8 @@ class AmougRCNNModel(pl.LightningModule):
         self.test_map = MeanAveragePrecision()
 
         # Save hyperparameter in checkpoints
-        self.lr = lr
-        self.momentum = momentum
-        self.weight_decay = weight_decay
+        self.lr = config['lr']
+        self.weight_decay = config['weight_decay']
         self.save_hyperparameters()
 
     def forward(self, x):
@@ -155,6 +154,6 @@ class AmougRCNNModel(pl.LightningModule):
         self.test_map.reset()
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(
-            self.parameters(), lr=self.lr, momentum=self.momentum, weight_decay=self.weight_decay)
+        optimizer = torch.optim.AdamW(
+            self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         return optimizer
