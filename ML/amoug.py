@@ -21,7 +21,7 @@ def visualize(imgs, results, threshold=None, colors=(0, 255, 0)):
         #   res = filter_by_score(res, threshold)
 
         if 'scores' in res:
-            _colors = [(colors[0]*l, colors[1]*l, colors[2]*l)
+            _colors = [(int(colors[0]*l), int(colors[1]*l), int(colors[2]*l))
                        for l in res['scores']]
             labels = [f"{int(i)}:{np.round(float(s), 2)}" for i,
                       s in zip(res['labels'], res['scores'])]
