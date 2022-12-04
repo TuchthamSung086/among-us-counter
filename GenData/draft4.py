@@ -225,6 +225,7 @@ print(cnt)
 
 # CHANGE PARAMETERS BELOW AND RUN
 fout = open("GenData/set5/count.txt", "w", buffering=1)
+fout.close()
 for i in range(10000):
     tries = random.randint(3, 20)
     img, lab, cnt = gen2(red, canteen, tries)
