@@ -53,16 +53,26 @@ def collate_fn(batch):
 class AmougDataset(tv.datasets.VisionDataset):
     def __init__(self, root: str, transforms: Optional[Callable] = None, transform: Optional[Callable] = None, target_transform: Optional[Callable] = None, gen_masks=False) -> None:
         super().__init__(root, transforms, transform, target_transform)
+        self.img_names = [file_name for file_name in os.listdir(
+            self.root) if file_name.startswith("img")]
+        self.label_names = [file_name for file_name in os.listdir(
+            self.root) if file_name.startswith("label")]
+        self.img_names.sort()
+        self.label_names.sort()
+
         self.gen_masks = gen_masks
 
     def __len__(self):
         # count number of file which start with img
-        return sum(file_name.startswith("img") for file_name in os.listdir(self.root))
+        return len(self.img_names)
 
     def __getitem__(self, index: int):
         # Load the image and mask
-        img_path = os.path.join(self.root, f"img{index}.png")
-        mask_path = os.path.join(self.root, f"label{index}.png")
+        img_name = self.img_names[index]
+        img_path = os.path.join(self.root, img_name)
+
+        label_name = self.label_names[index];
+        mask_path = os.path.join(self.root, label_name)
 
         img = tv.io.read_image(img_path, tv.io.ImageReadMode.RGB)
         mask = tv.io.read_image(mask_path, tv.io.ImageReadMode.GRAY)
@@ -178,7 +188,7 @@ class AmougRCNNModel(pl.LightningModule):
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, threshold=1e-3, verbose=True, patience=2, factor=0.75)
         return {
-           'optimizer': optimizer,
-           'lr_scheduler': lr_scheduler,
-           'monitor': 'val_loss'
-       }
+            'optimizer': optimizer,
+            'lr_scheduler': lr_scheduler,
+            'monitor': 'val_loss'
+        }
