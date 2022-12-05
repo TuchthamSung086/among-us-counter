@@ -4,6 +4,7 @@ import pytorch_lightning as pl
 import numpy as np
 import torch
 import torchvision as tv
+from natsort import natsorted
 from torchvision.models import detection
 from torchvision.transforms.functional import pil_to_tensor, convert_image_dtype, pad
 from torchmetrics.detection import MeanAveragePrecision
@@ -59,12 +60,10 @@ def collate_fn(batch):
 class AmougDataset(tv.datasets.VisionDataset):
     def __init__(self, root: str, transforms: Optional[Callable] = None, transform: Optional[Callable] = None, target_transform: Optional[Callable] = None, gen_masks=False) -> None:
         super().__init__(root, transforms, transform, target_transform)
-        self.img_names = [file_name for file_name in os.listdir(
-            self.root) if file_name.startswith("img")]
-        self.label_names = [file_name for file_name in os.listdir(
-            self.root) if file_name.startswith("label")]
-        self.img_names.sort()
-        self.label_names.sort()
+        self.img_names = natsorted(file_name for file_name in os.listdir(
+            self.root) if file_name.startswith("img"))
+        self.label_names = natsorted(file_name for file_name in os.listdir(
+            self.root) if file_name.startswith("label"))
 
         self.gen_masks = gen_masks
 
