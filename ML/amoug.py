@@ -5,13 +5,17 @@ import numpy as np
 import torch
 import torchvision as tv
 from torchvision.models import detection
-from torchvision.transforms.functional import pil_to_tensor, convert_image_dtype
+from torchvision.transforms.functional import pil_to_tensor, convert_image_dtype, pad
 from torchmetrics.detection import MeanAveragePrecision
 
 from typing import Optional, Callable
 
 
 def visualize(imgs, results, threshold=None, colors=(0, 255, 0)):
+
+    max_height = max(img.size(1) for img in imgs)
+    max_width = max(img.size(2) for img in imgs)
+
     previews = []
     for img, res in zip(imgs, results):
         # res = filter_by_score(res, 0.15)
@@ -38,6 +42,9 @@ def visualize(imgs, results, threshold=None, colors=(0, 255, 0)):
             colors=_colors
         )
 
+        height = preview.size(1)
+        width = preview.size(2)
+        preview = pad(preview, [0, 0, max_width-width, max_height-height])
         previews.append(preview)
 
     return tv.utils.make_grid(previews, nrow=int(np.sqrt(len(previews))))
@@ -46,7 +53,6 @@ def visualize(imgs, results, threshold=None, colors=(0, 255, 0)):
 def collate_fn(batch):
     # https://github.com/pytorch/vision/blob/4a310f26049371959617921d0eb9b001f4d262c6/references/detection/utils.py#L203
     imgs, targets = tuple(zip(*batch))
-    imgs = torch.stack(imgs)
     return imgs, targets
 
 
@@ -71,7 +77,7 @@ class AmougDataset(tv.datasets.VisionDataset):
         img_name = self.img_names[index]
         img_path = os.path.join(self.root, img_name)
 
-        label_name = self.label_names[index];
+        label_name = self.label_names[index]
         mask_path = os.path.join(self.root, label_name)
 
         img = tv.io.read_image(img_path, tv.io.ImageReadMode.RGB)
@@ -148,12 +154,12 @@ class AmougRCNNModel(pl.LightningModule):
         if type(batch) == tuple:
             imgs, targets = batch
             if should_augment:
-                imgs = self.augmentation(imgs)
+                imgs = tuple(self.augmentation(img)[0] for img in imgs)
             return imgs, targets
         else:
             imgs = batch
             if should_augment:
-                imgs = self.augmentation(imgs)
+                imgs = tuple(self.augmentation(img)[0] for img in imgs)
             return imgs
 
     def training_step(self, batch, batch_idx):
