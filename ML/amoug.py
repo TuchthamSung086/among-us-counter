@@ -108,7 +108,7 @@ class AmougDataset(tv.datasets.VisionDataset):
 
 
 class AmougRCNNModel(pl.LightningModule):
-    def __init__(self, config={'lr': 0.00005, 'weight_decay': 0.005}, augmentation: Optional[torch.nn.Module] = None, augment_non_train=False):
+    def __init__(self, config={'lr': 0.005, 'momentum':0.9, 'weight_decay': 0.0005}, augmentation: Optional[torch.nn.Module] = None, augment_non_train=False):
         super().__init__()
 
         # Constructor stuff
@@ -139,8 +139,9 @@ class AmougRCNNModel(pl.LightningModule):
 
         # Save hyperparameter in checkpoints
         self.lr = config['lr']
+        self.momentum = config['momentum']
         self.weight_decay = config['weight_decay']
-        self.save_hyperparameters("config")
+        self.save_hyperparameters("config", ignore=["augmentation"])
 
     def forward(self, x):
         return self.model(x)
@@ -188,8 +189,8 @@ class AmougRCNNModel(pl.LightningModule):
         self.test_map.reset()
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        optimizer = torch.optim.SGD(
+            self.parameters(), lr=self.lr, momentum=self.momentum, weight_decay=self.weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, threshold=1e-3, verbose=True, patience=2, factor=0.75)
         return {
