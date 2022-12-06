@@ -63,6 +63,7 @@ class AmougDataset(tv.datasets.VisionDataset):
 
     def __len__(self):
         # count number of file which start with img
+        assert len(self.img_names) == len(self.label_names)
         return len(self.img_names)
 
     def __getitem__(self, index: int):
@@ -146,16 +147,18 @@ class AmougRCNNModel(pl.LightningModule):
             self.trainer.training or self.augment_non_train
         )
 
-        if type(batch) == tuple:
-            imgs, targets = batch
-            if should_augment:
-                imgs = self.augmentation(imgs)
-            return imgs, targets
-        else:
-            imgs = batch
-            if should_augment:
-                imgs = self.augmentation(imgs)
-            return imgs
+        # workaround for https://github.com/Lightning-AI/lightning/issues/13228
+        with torch.autocast(device_type="cuda", enabled=False):
+            if type(batch) == tuple:
+                imgs, targets = batch
+                if should_augment:
+                    imgs = self.augmentation(imgs)
+                return imgs, targets
+            else:
+                imgs = batch
+                if should_augment:
+                    imgs = self.augmentation(imgs)
+                return imgs
 
     def training_step(self, batch, batch_idx):
         imgs, targets = batch
