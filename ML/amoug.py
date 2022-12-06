@@ -70,7 +70,7 @@ class AmougDataset(tv.datasets.VisionDataset):
         img_name = self.img_names[index]
         img_path = os.path.join(self.root, img_name)
 
-        label_name = self.label_names[index];
+        label_name = self.label_names[index]
         mask_path = os.path.join(self.root, label_name)
 
         img = tv.io.read_image(img_path, tv.io.ImageReadMode.RGB)
@@ -102,7 +102,7 @@ class AmougDataset(tv.datasets.VisionDataset):
 
 
 class AmougRCNNModel(pl.LightningModule):
-    def __init__(self, config={'opt_type': 'SGD', 'lr': 0.005, 'momentum': 0.9, 'weight_decay': 0.0005}, augmentation: Optional[torch.nn.Module] = None, augment_non_train=False):
+    def __init__(self, config={'opt_type': 'SGD', 'lr': 0.005, 'momentum': 0.9, 'weight_decay': 0.0005}, augmentation: Optional[torch.nn.Module] = None, augment_non_train=False, freeze_back=True):
         super().__init__()
 
         # Constructor stuff
@@ -115,8 +115,9 @@ class AmougRCNNModel(pl.LightningModule):
             progress=True
         )
         # Freeze model's parameters
-        for params in model.parameters():
-            params.requires_grad = False
+        if freeze_back:
+            for params in model.parameters():
+                params.requires_grad = False
 
         # Replace model's head box predictor with our owns
         # Get size of box predictor input
@@ -189,13 +190,14 @@ class AmougRCNNModel(pl.LightningModule):
             optimizer = torch.optim.SGD(
                 self.parameters(), lr=self.lr, momentum=self.momentum, weight_decay=self.weight_decay)
         elif self.opt_type == 'AdamW':
-            optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+            optimizer = torch.optim.AdamW(
+                self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         else:
             raise Exception(f"Unsupported optimizer type: {self.opt_type}")
 
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, threshold=1e-3, verbose=True, patience=2, factor=0.75)
-        
+
         print(f"optimizer = {optimizer}")
         print(f"lr_scheduler = {lr_scheduler}")
 
