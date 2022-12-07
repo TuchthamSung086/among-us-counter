@@ -14,10 +14,11 @@ def random_square_background(dir_name,size,N = 1,threshold_percent = 10):
     bglist = os.listdir(dir_name)
     count_fail = 0
     while len(l) < N:
-        if count_fail > max(20,2*N):
-            raise Exception('Fail to generate background corresponding to param')
+        if count_fail > 20:
+            threshold_percent += 10
+            count_fail = 0
         image_name = np.random.choice(bglist)
-        print(image_name)
+        # print(image_name)
         background = cv2.imread(f'{dir_name}\\{image_name}',cv2.IMREAD_UNCHANGED)
         if size == -1:
             size = np.random.randint(100,800)
@@ -32,9 +33,9 @@ def random_square_background(dir_name,size,N = 1,threshold_percent = 10):
             height, width = background.shape
         else:
             height, width, nchannel = background.shape
-        if height > size or width > size:
-            count_fail += 1
-            continue
+        if height < size or width < size:
+            size = min(height,width)
+
         x = np.random.randint(0,width-size+1)
         y = np.random.randint(0,height-size+1)
 
